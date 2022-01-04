@@ -64,9 +64,10 @@ public class Cell
             if (walls[i] == false)
             {
                 GameObject wall = cellPrefab.transform.GetChild(1).GetChild(i).gameObject;
-
                 wall.SetActive(false);
-                GenerateMaze.junkCells.Add(wall);
+
+                // add the wall to a list of to be removed objects, can't destroy it here because this doesnt use class doesn't use monobehaviour
+                GenerateMaze.junkObjects.Add(wall);
             }
         }
     }

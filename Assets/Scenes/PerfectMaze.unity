@@ -332,7 +332,8 @@ MonoBehaviour:
   rowsCount: 10
   cellPrefab: {fileID: 5224783885215737960, guid: e3452f444c0d04743b52890aba8dcc04, type: 3}
   cellContainer: {fileID: 1822532022}
-  cellHeightOffset: 0.1
+  cellHeightOffset: 0.2
+  cellSpawnDelay: 0.2
 --- !u!4 &1447757940
 Transform:
   m_ObjectHideFlags: 0
