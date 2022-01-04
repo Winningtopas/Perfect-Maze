@@ -16,7 +16,12 @@ public class GenerateMaze : MonoBehaviour
 
     [SerializeField]
     private GameObject cellPrefab, cellContainer;
-    private Cell currentCell, nextCell;
+    [SerializeField]
+    private float cellHeightOffset = 0.1f;
+    private float previousCellHeight;
+    private Cell previousCell, currentCell, nextCell;
+
+
     #endregion
 
     // Start is called before the first frame update
@@ -24,14 +29,20 @@ public class GenerateMaze : MonoBehaviour
     {
         SpawnMazeGrid();
 
-        while (true)
-        {
-            MazeLogic();
-            if (stack.Count == 0)
-            {
-                break;
-            }
-        }
+        //while (true)
+        //{
+        //    MazeLogic();
+        //    if (stack.Count == 0)
+        //    {
+        //        break;
+        //    }
+        //}
+    }
+
+    private void Update()
+    {
+        MazeLogic();
+
     }
 
     private void SpawnMazeGrid()
@@ -55,6 +66,7 @@ public class GenerateMaze : MonoBehaviour
         for (int i = 0; i < cells.Count; i++)
         {
             cells[i].cellPrefab = Instantiate(cellPrefab, new Vector3(cells[i].x, transform.position.y, cells[i].z), Quaternion.identity, cellContainer.transform);
+            cells[i].cellPrefab.name = cellPrefab.name;
         }
 
         currentCell = cells[Random.Range(0, cells.Count)];
@@ -77,7 +89,10 @@ public class GenerateMaze : MonoBehaviour
 
             RemoveWalls(currentCell, nextCell);
 
+            previousCell = currentCell;
             currentCell = nextCell;
+
+            AdjustCellVisual();
         }
         else if (stack.Count > 0)
         {
@@ -90,6 +105,22 @@ public class GenerateMaze : MonoBehaviour
             foreach (GameObject go in junkCells)
             {
                 Destroy(go);
+            }
+        }
+    }
+    private void AdjustCellVisual()
+    {
+        for (int i = 0; i < cells.Count; i++)
+        {
+            if (cells[i] == currentCell)
+            {
+                // change the cell ground color
+                cells[i].cellPrefab.transform.GetChild(0).gameObject.GetComponent<MeshRenderer>().material.color = Color.red;
+
+                // change the cell height, the further down the maze the lower it will be
+                Vector3 previousPostion = cells[i].cellPrefab.transform.position;
+                previousCellHeight = previousCell.cellPrefab.transform.position.y;
+                cells[i].cellPrefab.transform.position = new Vector3(previousPostion.x, previousCellHeight - cellHeightOffset, previousPostion.z);
             }
         }
     }
