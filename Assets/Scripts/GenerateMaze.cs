@@ -7,7 +7,8 @@ public class GenerateMaze : MonoBehaviour
     #region Variables
     [Header("Maze Variables")]
     [SerializeField]
-    [Range(10, 250)] private int columsCount, rowsCount = 10;
+    private bool spawnMaze;
+    private int columsCount, rowsCount = 10;
 
     [Header("Cell Variables")]
     public static List<Cell> cells = new List<Cell>();
@@ -15,18 +16,41 @@ public class GenerateMaze : MonoBehaviour
     public static List<GameObject> junkObjects = new List<GameObject>();
 
     [SerializeField]
-    private GameObject cellPrefab, cellContainer;
+    private GameObject cellPrefab, cellContainerPrefab, cellContainer;
     [SerializeField]
     private float cellHeightOffset = 0.1f, cellSpawnDelay = .1f;
     private float previousCellHeight;
     private Cell previousCell, currentCell, nextCell;
+
+    [Header("UI references")]
+    [SerializeField]
+    private AdjustSliderValue columnSliderText, rowSliderText;
     #endregion
 
-    // Start is called before the first frame update
-    private void Start()
+    public void SpawnMaze()
     {
+        columsCount = columnSliderText.sliderValue;
+        rowsCount = rowSliderText.sliderValue;
+        DestroyCurrentMaze();
         SpawnMazeGrid();
         StartCoroutine(NextMazeCell());
+    }
+
+    private void DestroyCurrentMaze()
+    {
+        StopAllCoroutines();
+        Destroy(cellContainer);
+        ResetVariables();
+
+        cellContainer = Instantiate(cellContainerPrefab, Vector3.zero, Quaternion.identity, transform);
+        cellContainer.name = "CellContainer";
+    }
+
+    private void ResetVariables()
+    {
+        cells.Clear();
+        stack.Clear();
+        junkObjects.Clear();
     }
 
     private IEnumerator NextMazeCell()
