@@ -5,26 +5,31 @@ using UnityEngine;
 public class GenerateMaze : MonoBehaviour
 {
     #region Variables
-    [Header("Maze Variables")]
-    [SerializeField]
-    private bool spawnMaze;
-    private int columsCount, rowsCount = 10;
+    //[Header("Maze Variables")]
+    [HideInInspector]
+    public bool threeDimensionalMaze = true;
 
-    [Header("Cell Variables")]
     public static List<Cell> cells = new List<Cell>();
     public static List<Cell> stack = new List<Cell>();
     public static List<GameObject> junkObjects = new List<GameObject>();
 
+    [Header("Cell Variables")]
     [SerializeField]
-    private GameObject cellPrefab, cellContainerPrefab, cellContainer;
+    private GameObject cellPrefab;
     [SerializeField]
-    private float cellHeightOffset = 0.1f, cellSpawnDelay = .1f;
-    private float previousCellHeight;
+    private GameObject cellContainerPrefab;
+    [SerializeField]
+    private float cellHeightOffset = 0.1f, cellSpawnDelay = .1f, cellFallHeight = 3f;
+
+    private GameObject cellContainer;
     private Cell previousCell, currentCell, nextCell;
+    private int columsCount, rowsCount = 10;
 
     [Header("UI references")]
     [SerializeField]
-    private AdjustSliderValue columnSliderText, rowSliderText;
+    private AdjustSliderValue columnSliderText;
+    [SerializeField]
+    private AdjustSliderValue rowSliderText;
     #endregion
 
     public void SpawnMaze()
@@ -34,6 +39,11 @@ public class GenerateMaze : MonoBehaviour
         DestroyCurrentMaze();
         SpawnMazeGrid();
         StartCoroutine(NextMazeCell());
+    }
+
+    public void ThreeDimensionalMazeToggle()
+    {
+        threeDimensionalMaze = !threeDimensionalMaze;
     }
 
     private void DestroyCurrentMaze()
@@ -142,12 +152,17 @@ public class GenerateMaze : MonoBehaviour
     IEnumerator LerpPosition(float duration)
     {
         Vector3 cellPostion = currentCell.cellPrefab.transform.position;
-        currentCell.cellPrefab.transform.position = new Vector3(cellPostion.x, 0f, cellPostion.z);
+        currentCell.cellPrefab.transform.position = new Vector3(cellPostion.x, cellFallHeight, cellPostion.z);
 
         float previousCellHeight = previousCell.cellPrefab.transform.position.y;
+        float targetHeight;
+        if (threeDimensionalMaze)
+            targetHeight = previousCellHeight - cellHeightOffset;
+        else
+            targetHeight = previousCellHeight;
 
         // change the cell height, the further down the maze the lower it will be
-        Vector3 targetPosition = new Vector3(cellPostion.x, previousCellHeight - cellHeightOffset, cellPostion.z);
+        Vector3 targetPosition = new Vector3(cellPostion.x, targetHeight, cellPostion.z);
         Vector3 startPosition = currentCell.cellPrefab.transform.position;
 
         float time = 0;
