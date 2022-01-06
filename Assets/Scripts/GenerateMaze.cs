@@ -12,19 +12,12 @@ public class GenerateMaze : MonoBehaviour
     public static List<Cell> stack = new List<Cell>();
     public static List<GameObject> junkObjects = new List<GameObject>();
 
-    private ObjectPooler objectPooler;
-    [SerializeField]
-    private CameraPositioning camera;
-
     [Header("Cell Variables")]
     [SerializeField]
-    private GameObject cellPrefab;
+    private float cellSpawnDelay = .2f;
     [SerializeField]
-    private GameObject cellContainerPrefab;
-    [SerializeField]
-    private float cellHeightOffset = 0.1f, cellSpawnDelay = .2f, cellFallHeight = 3f;
+    private float cellHeightOffset = 0.1f, cellFallHeight = 3f;
 
-    private GameObject cellContainer;
     private Cell previousCell, currentCell, nextCell;
     private int columsCount, rowsCount = 10;
 
@@ -33,6 +26,13 @@ public class GenerateMaze : MonoBehaviour
     private AdjustSliderValue columnSliderText;
     [SerializeField]
     private AdjustSliderValue rowSliderText;
+
+    [Header("Object references")]
+    [SerializeField]
+    private CameraPositioning mainCamera;
+    [SerializeField]
+    private GameObject mazeCellPool;
+    private ObjectPooler objectPooler;
     #endregion
 
     private void Start()
@@ -46,7 +46,7 @@ public class GenerateMaze : MonoBehaviour
         rowsCount = rowSliderText.sliderValue;
         DestroyCurrentMaze();
         SpawnMazeGrid();
-        camera.CenterCameraOnMaze(columsCount, rowsCount);
+        mainCamera.CenterCameraOnMaze(columsCount, rowsCount);
 
         StartCoroutine(NextMazeCell());
     }
@@ -59,11 +59,12 @@ public class GenerateMaze : MonoBehaviour
     private void DestroyCurrentMaze()
     {
         StopAllCoroutines();
-        Destroy(cellContainer);
-        ResetVariables();
 
-        cellContainer = Instantiate(cellContainerPrefab, Vector3.zero, Quaternion.identity, transform);
-        cellContainer.name = "CellContainer";
+        for(int i = 0; i < cells.Count; i++)
+        {
+            cells[i].cellPrefab.SetActive(false);
+        }
+        ResetVariables();
     }
 
     private void ResetVariables()
@@ -129,7 +130,7 @@ public class GenerateMaze : MonoBehaviour
         // Instantiate a visual element for the cellgrid and store it in the cell, set it inactive for now
         for (int i = 0; i < cells.Count; i++)
         {
-            cells[i].cellPrefab = objectPooler.SpawnFromPool("MazeCell", new Vector3(cells[i].x, transform.position.y, cells[i].z), transform.rotation, cellContainer.transform);
+            cells[i].cellPrefab = objectPooler.SpawnFromPool("MazeCell", new Vector3(cells[i].x, transform.position.y, cells[i].z), transform.rotation, mazeCellPool.transform);
             cells[i].cellPrefab.SetActive(false);
         }
 
