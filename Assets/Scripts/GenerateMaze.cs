@@ -5,13 +5,14 @@ using UnityEngine;
 public class GenerateMaze : MonoBehaviour
 {
     #region Variables
-    //[Header("Maze Variables")]
     [HideInInspector]
     public bool threeDimensionalMaze = true;
 
     public static List<Cell> cells = new List<Cell>();
     public static List<Cell> stack = new List<Cell>();
     public static List<GameObject> junkObjects = new List<GameObject>();
+
+    private ObjectPooler objectPooler;
 
     [Header("Cell Variables")]
     [SerializeField]
@@ -31,6 +32,11 @@ public class GenerateMaze : MonoBehaviour
     [SerializeField]
     private AdjustSliderValue rowSliderText;
     #endregion
+
+    private void Start()
+    {
+        objectPooler = ObjectPooler.Instance;
+    }
 
     public void SpawnMaze()
     {
@@ -60,7 +66,6 @@ public class GenerateMaze : MonoBehaviour
     {
         cells.Clear();
         stack.Clear();
-        junkObjects.Clear();
     }
 
     private IEnumerator NextMazeCell()
@@ -95,10 +100,6 @@ public class GenerateMaze : MonoBehaviour
             }
             else // if every cell has been visited
             {
-                foreach (GameObject go in junkObjects) // destroy junkObjects that we won't be needing anymore (example: removed walls)
-                {
-                    Destroy(go);
-                }
                 yield break;
             }
         }
@@ -124,8 +125,8 @@ public class GenerateMaze : MonoBehaviour
         // Instantiate a visual element for the cellgrid and store it in the cell, set it inactive for now
         for (int i = 0; i < cells.Count; i++)
         {
-            cells[i].cellPrefab = Instantiate(cellPrefab, new Vector3(cells[i].x, transform.position.y, cells[i].z), Quaternion.identity, cellContainer.transform);
-            cells[i].cellPrefab.name = cellPrefab.name;
+            cells[i].cellPrefab = objectPooler.SpawnFromPool("MazeCell", new Vector3(cells[i].x, transform.position.y, cells[i].z), transform.rotation, cellContainer.transform);
+            //cells[i].cellPrefab.name = cellPrefab.name;
             cells[i].cellPrefab.SetActive(false);
         }
 
@@ -160,6 +161,8 @@ public class GenerateMaze : MonoBehaviour
             targetHeight = previousCellHeight - cellHeightOffset;
         else
             targetHeight = previousCellHeight;
+
+        Debug.Log(targetHeight);
 
         // change the cell height, the further down the maze the lower it will be
         Vector3 targetPosition = new Vector3(cellPostion.x, targetHeight, cellPostion.z);

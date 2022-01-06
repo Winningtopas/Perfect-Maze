@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Cell
+public class Cell : IPooledObject
 {
     #region Variables
     public int x, z;
@@ -15,6 +15,15 @@ public class Cell
     private int columnAmount, rowAmount;
 
     #endregion
+
+    public void OnObjectSpawn()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+                GameObject wall = cellPrefab.transform.GetChild(1).GetChild(i).gameObject;
+                wall.SetActive(true);
+        }
+    }
 
     private void CheckNeighbourCells()
     {
@@ -65,9 +74,6 @@ public class Cell
             {
                 GameObject wall = cellPrefab.transform.GetChild(1).GetChild(i).gameObject;
                 wall.SetActive(false);
-
-                // add the wall to a list of to be removed objects, can't destroy it here because this doesnt use class doesn't use monobehaviour
-                GenerateMaze.junkObjects.Add(wall);
             }
         }
     }
