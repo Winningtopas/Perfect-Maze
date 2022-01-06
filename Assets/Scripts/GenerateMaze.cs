@@ -13,6 +13,8 @@ public class GenerateMaze : MonoBehaviour
     public static List<GameObject> junkObjects = new List<GameObject>();
 
     private ObjectPooler objectPooler;
+    [SerializeField]
+    private CameraPositioning camera;
 
     [Header("Cell Variables")]
     [SerializeField]
@@ -20,7 +22,7 @@ public class GenerateMaze : MonoBehaviour
     [SerializeField]
     private GameObject cellContainerPrefab;
     [SerializeField]
-    private float cellHeightOffset = 0.1f, cellSpawnDelay = .1f, cellFallHeight = 3f;
+    private float cellHeightOffset = 0.1f, cellSpawnDelay = .2f, cellFallHeight = 3f;
 
     private GameObject cellContainer;
     private Cell previousCell, currentCell, nextCell;
@@ -44,6 +46,8 @@ public class GenerateMaze : MonoBehaviour
         rowsCount = rowSliderText.sliderValue;
         DestroyCurrentMaze();
         SpawnMazeGrid();
+        camera.CenterCameraOnMaze(columsCount, rowsCount);
+
         StartCoroutine(NextMazeCell());
     }
 
@@ -126,7 +130,6 @@ public class GenerateMaze : MonoBehaviour
         for (int i = 0; i < cells.Count; i++)
         {
             cells[i].cellPrefab = objectPooler.SpawnFromPool("MazeCell", new Vector3(cells[i].x, transform.position.y, cells[i].z), transform.rotation, cellContainer.transform);
-            //cells[i].cellPrefab.name = cellPrefab.name;
             cells[i].cellPrefab.SetActive(false);
         }
 
@@ -162,21 +165,26 @@ public class GenerateMaze : MonoBehaviour
         else
             targetHeight = previousCellHeight;
 
-        Debug.Log(targetHeight);
-
         // change the cell height, the further down the maze the lower it will be
         Vector3 targetPosition = new Vector3(cellPostion.x, targetHeight, cellPostion.z);
         Vector3 startPosition = currentCell.cellPrefab.transform.position;
 
         float time = 0;
 
-        while (time < duration)
+        // this coroutine only runs once when the cellSpawnDelay is a small value, the following line ensures that the cells will still get their correct height
+        if (cellSpawnDelay < .2f && threeDimensionalMaze)
+            currentCell.cellPrefab.transform.position = targetPosition;
+        else
         {
-            currentCell.cellPrefab.transform.position = Vector3.Lerp(startPosition, targetPosition, time / duration);
-            time += Time.deltaTime;
-            yield return null;
+            while (time < duration)
+            {
+                currentCell.cellPrefab.transform.position = Vector3.Lerp(startPosition, targetPosition, time / duration);
+                time += Time.deltaTime;
+
+                yield return null;
+            }
+            currentCell.cellPrefab.transform.position = targetPosition;
         }
-        currentCell.cellPrefab.transform.position = targetPosition;
     }
 
     private void RemoveWalls(Cell a, Cell b)

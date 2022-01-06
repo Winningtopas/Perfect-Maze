@@ -521,12 +521,12 @@ GameObject:
   - component: {fileID: 271136075}
   - component: {fileID: 271136074}
   m_Layer: 0
-  m_Name: Main Camera (1)
+  m_Name: Main Camera 3D
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!81 &271136074
 AudioListener:
   m_ObjectHideFlags: 0
@@ -1627,13 +1627,14 @@ GameObject:
   - component: {fileID: 963194228}
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
+  - component: {fileID: 963194229}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!81 &963194226
 AudioListener:
   m_ObjectHideFlags: 0
@@ -1699,6 +1700,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+--- !u!114 &963194229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16ade44a2d1c6fe4287851c2f2733ce0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &993559777
 GameObject:
   m_ObjectHideFlags: 0
@@ -2109,6 +2122,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   threeDimensionalMaze: 1
+  camera: {fileID: 963194229}
   cellPrefab: {fileID: 5224783885215737960, guid: e3452f444c0d04743b52890aba8dcc04, type: 3}
   cellContainerPrefab: {fileID: 2814399630328811923, guid: 654e2f407b0c42048a930d530072aeb9, type: 3}
   cellHeightOffset: 0.2
