@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -20,6 +21,8 @@ public class GenerateMaze : MonoBehaviour
 
     private Cell previousCell, currentCell, nextCell;
     private int columsCount, rowsCount = 10;
+    private bool isFirstCell = true, coloredLastCell = false;
+    private int startCellIndex;
 
     [Header("UI references")]
     [SerializeField]
@@ -60,7 +63,7 @@ public class GenerateMaze : MonoBehaviour
     {
         StopAllCoroutines();
 
-        for(int i = 0; i < cells.Count; i++)
+        for (int i = 0; i < cells.Count; i++)
         {
             cells[i].cellPrefab.SetActive(false);
         }
@@ -71,12 +74,20 @@ public class GenerateMaze : MonoBehaviour
     {
         cells.Clear();
         stack.Clear();
+        isFirstCell = true;
+        coloredLastCell = false;
     }
 
     private IEnumerator NextMazeCell()
     {
         while (true)
         {
+            if (isFirstCell)
+            {
+                AdjustCellVisual(Color.green);
+                isFirstCell = false;
+            }
+
             currentCell.visited = true;
 
             nextCell = currentCell.CheckNeighbors(columsCount, rowsCount);
@@ -95,10 +106,15 @@ public class GenerateMaze : MonoBehaviour
                 previousCell = currentCell;
                 currentCell = nextCell;
 
-                AdjustCellVisual();
+                AdjustCellVisual(Color.red);
                 yield return new WaitForSeconds(cellSpawnDelay);
             }
-            else if (stack.Count > 0) // if there are still unvisited cells in the stack
+            else if (!coloredLastCell)
+            {
+                AdjustCellVisual(Color.yellow);
+                coloredLastCell = true;
+            }
+            else if (stack.Count > 0) // if there are still un(re)visited cells in the stack
             {
                 currentCell = stack[stack.Count - 1];
                 stack.RemoveAt(stack.Count - 1);
@@ -134,10 +150,11 @@ public class GenerateMaze : MonoBehaviour
             cells[i].cellPrefab.SetActive(false);
         }
 
-        currentCell = cells[Random.Range(0, cells.Count)];
+        startCellIndex = UnityEngine.Random.Range(0, cells.Count);
+        currentCell = cells[startCellIndex];
     }
 
-    private void AdjustCellVisual()
+    private void AdjustCellVisual(Color cellColor)
     {
         for (int i = 0; i < cells.Count; i++)
         {
@@ -145,21 +162,31 @@ public class GenerateMaze : MonoBehaviour
             {
                 currentCell.cellPrefab.SetActive(true);
 
-                // change the cell ground color
-                currentCell.cellPrefab.transform.GetChild(0).gameObject.GetComponent<MeshRenderer>().material.color = Color.red;
+                ColorCell(cellColor);
 
-                StartCoroutine(LerpPosition(.2f));
+                StartCoroutine(LerpPosition(.2f, currentCell));
                 break;
             }
         }
     }
 
-    IEnumerator LerpPosition(float duration)
+    private void ColorCell(Color cellColor)
     {
-        Vector3 cellPostion = currentCell.cellPrefab.transform.position;
-        currentCell.cellPrefab.transform.position = new Vector3(cellPostion.x, cellFallHeight, cellPostion.z);
+        // change the cell ground color
+        currentCell.cellPrefab.transform.GetChild(0).gameObject.GetComponent<MeshRenderer>().material.color = cellColor;
+    }
 
-        float previousCellHeight = previousCell.cellPrefab.transform.position.y;
+    IEnumerator LerpPosition(float duration, Cell cell)
+    {
+        Vector3 cellPostion = cell.cellPrefab.transform.position;
+        cell.cellPrefab.transform.position = new Vector3(cellPostion.x, cellFallHeight, cellPostion.z);
+
+        float previousCellHeight;
+        if (previousCell != null)
+            previousCellHeight = previousCell.cellPrefab.transform.position.y;
+        else
+            previousCellHeight = cellFallHeight;
+
         float targetHeight;
         if (threeDimensionalMaze)
             targetHeight = previousCellHeight - cellHeightOffset;
@@ -168,23 +195,23 @@ public class GenerateMaze : MonoBehaviour
 
         // change the cell height, the further down the maze the lower it will be
         Vector3 targetPosition = new Vector3(cellPostion.x, targetHeight, cellPostion.z);
-        Vector3 startPosition = currentCell.cellPrefab.transform.position;
+        Vector3 startPosition = cell.cellPrefab.transform.position;
 
         float time = 0;
 
         // this coroutine only runs once when the cellSpawnDelay is a small value, the following line ensures that the cells will still get their correct height
         if (cellSpawnDelay < .2f && threeDimensionalMaze)
-            currentCell.cellPrefab.transform.position = targetPosition;
+            cell.cellPrefab.transform.position = targetPosition;
         else
         {
             while (time < duration)
             {
-                currentCell.cellPrefab.transform.position = Vector3.Lerp(startPosition, targetPosition, time / duration);
+                cell.cellPrefab.transform.position = Vector3.Lerp(startPosition, targetPosition, time / duration);
                 time += Time.deltaTime;
 
                 yield return null;
             }
-            currentCell.cellPrefab.transform.position = targetPosition;
+            cell.cellPrefab.transform.position = targetPosition;
         }
     }
 

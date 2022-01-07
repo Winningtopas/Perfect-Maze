@@ -2096,7 +2096,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   threeDimensionalMaze: 1
-  cellSpawnDelay: 0.2
+  cellSpawnDelay: 0
   cellHeightOffset: 0.2
   cellFallHeight: 3
   columnSliderText: {fileID: 1921568624}
