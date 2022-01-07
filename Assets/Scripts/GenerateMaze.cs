@@ -7,7 +7,7 @@ public class GenerateMaze : MonoBehaviour
 {
     #region Variables
     [HideInInspector]
-    public bool threeDimensionalMaze = true;
+    public bool threeDimensionalMaze = true, dropDownAnimation = true;
 
     public static List<Cell> cells = new List<Cell>();
     public static List<Cell> stack = new List<Cell>();
@@ -57,6 +57,11 @@ public class GenerateMaze : MonoBehaviour
     public void ThreeDimensionalMazeToggle()
     {
         threeDimensionalMaze = !threeDimensionalMaze;
+    }
+
+    public void DropDownAnimationToggle()
+    {
+        dropDownAnimation = !dropDownAnimation;
     }
 
     private void DestroyCurrentMaze()
@@ -200,7 +205,7 @@ public class GenerateMaze : MonoBehaviour
         float time = 0;
 
         // this coroutine only runs once when the cellSpawnDelay is a small value, the following line ensures that the cells will still get their correct height
-        if (cellSpawnDelay < .2f && threeDimensionalMaze)
+        if (cellSpawnDelay < .2f && threeDimensionalMaze || !dropDownAnimation)
             cell.cellPrefab.transform.position = targetPosition;
         else
         {
