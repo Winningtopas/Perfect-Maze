@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Cell : IPooledObject
+public class Cell
 {
     #region Variables
     public int x, z;
@@ -10,38 +10,77 @@ public class Cell : IPooledObject
     public bool visited = false;
     public List<Cell> availableNeighbourCells = new List<Cell>();
     public bool[] walls = { true, true, true, true };
+    public bool isStartCell, isEndCell, adjustedCell;
 
     private Cell[] neighbourCells = new Cell[4];
     private int columnAmount, rowAmount;
-
+    private int maxAvailableNeighbours;
     #endregion
 
     public void OnObjectSpawn()
     {
         for (int i = 0; i < 4; i++)
         {
-                GameObject wall = cellPrefab.transform.GetChild(1).GetChild(i).gameObject;
-                wall.SetActive(true);
+            GameObject wall = cellPrefab.transform.GetChild(1).GetChild(i).gameObject;
+            wall.SetActive(true);
         }
+
+        isStartCell = false;
+        isEndCell = false;
+        adjustedCell = false;
     }
 
     private void CheckNeighbourCells()
     {
+        maxAvailableNeighbours = 0;
+
         if (Index(x, z - 1) != -1)
+        {
             neighbourCells[0] = GenerateMaze.cells[Index(x, z - 1)];
+            maxAvailableNeighbours++;
+        }
         if (Index(x + 1, z) != -1)
+        {
             neighbourCells[1] = GenerateMaze.cells[Index(x + 1, z)];
+            maxAvailableNeighbours++;
+        }
         if (Index(x, z + 1) != -1)
+        {
             neighbourCells[2] = GenerateMaze.cells[Index(x, z + 1)];
+            maxAvailableNeighbours++;
+        }
         if (Index(x - 1, z) != -1)
+        {
             neighbourCells[3] = GenerateMaze.cells[Index(x - 1, z)];
+            maxAvailableNeighbours++;
+        }
 
         for (int i = 0; i < 4; i++)
         {
             if (neighbourCells[i] != null && neighbourCells[i].visited == false)
+            {
                 availableNeighbourCells.Add(neighbourCells[i]);
+            }
         }
     }
+
+    public bool GeneratedAllNeighbours()
+    {
+        int amountOfNeighboursToCheck = maxAvailableNeighbours;
+        for (int i = 0; i < maxAvailableNeighbours; i++)
+        {
+            if (neighbourCells[i] != null)
+            {
+                if (neighbourCells[i].visited == true)
+                    amountOfNeighboursToCheck--;
+            }
+        }
+        if (amountOfNeighboursToCheck == 0)
+            return true;
+        else
+            return false;
+    }
+
 
     public Cell CheckNeighbors(int columns, int rows)
     {

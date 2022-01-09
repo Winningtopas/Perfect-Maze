@@ -9,9 +9,12 @@ public class GenerateMaze : MonoBehaviour
     [HideInInspector]
     public bool threeDimensionalMaze = true, dropDownAnimation = true;
 
+    [SerializeField]
     public static List<Cell> cells = new List<Cell>();
     public static List<Cell> stack = new List<Cell>();
-    public static List<GameObject> junkObjects = new List<GameObject>();
+    //public static List<GameObject> junkObjects = new List<GameObject>();
+
+    private List<Cell> unoptimisedWallsCell = new List<Cell>();
 
     [Header("Cell Variables")]
     [SerializeField]
@@ -19,10 +22,12 @@ public class GenerateMaze : MonoBehaviour
     [SerializeField]
     private float cellHeightOffset = 0.1f, cellFallHeight = 3f;
 
-    private Cell previousCell, currentCell, nextCell;
+    private Cell previousCell, currentCell, nextCell, endCell;
     private int columsCount, rowsCount = 10;
     private bool isFirstCell = true, coloredLastCell = false;
     private int startCellIndex;
+    [SerializeField]
+    private List<MeshFilter> cellGroundMeshFilters, cellWallMeshFilters = new List<MeshFilter>();
 
     [Header("UI references")]
     [SerializeField]
@@ -34,13 +39,19 @@ public class GenerateMaze : MonoBehaviour
     [SerializeField]
     private CameraPositioning mainCamera;
     [SerializeField]
-    private GameObject mazeCellPool;
-    private ObjectPooler objectPooler;
+    private GameObject cellPrefab, cellContainerPrefab;
+
+    private GameObject cellContainer;
+    [SerializeField]
+    private MeshFilter mazeGroundMesh, mazeWallMesh;
     #endregion
 
-    private void Start()
+    private void Update()
     {
-        objectPooler = ObjectPooler.Instance;
+        if (cellGroundMeshFilters.Count >= 50)
+        {
+            CombineMazeMeshes();
+        }
     }
 
     public void SpawnMaze()
@@ -62,6 +73,10 @@ public class GenerateMaze : MonoBehaviour
     public void DropDownAnimationToggle()
     {
         dropDownAnimation = !dropDownAnimation;
+        if (dropDownAnimation)
+            cellSpawnDelay = .2f;
+        else
+            cellSpawnDelay = 0f;
     }
 
     private void DestroyCurrentMaze()
@@ -79,8 +94,22 @@ public class GenerateMaze : MonoBehaviour
     {
         cells.Clear();
         stack.Clear();
+        cellGroundMeshFilters.Clear();
+        cellWallMeshFilters.Clear();
+        unoptimisedWallsCell.Clear();
+
         isFirstCell = true;
         coloredLastCell = false;
+        previousCell = null;
+        currentCell = null;
+        nextCell = null;
+        mazeGroundMesh.mesh = null;
+        mazeWallMesh.mesh = null;
+
+        if (cellContainer)
+            Destroy(cellContainer);
+        cellContainer = Instantiate(cellContainerPrefab, transform.position, Quaternion.identity, transform);
+        cellContainer.name = "CellContainer";
     }
 
     private IEnumerator NextMazeCell()
@@ -89,7 +118,8 @@ public class GenerateMaze : MonoBehaviour
         {
             if (isFirstCell)
             {
-                AdjustCellVisual(Color.green);
+                ColorCell(currentCell, Color.green);
+                AdjustCellVisual();
                 isFirstCell = false;
             }
 
@@ -108,16 +138,24 @@ public class GenerateMaze : MonoBehaviour
 
                 RemoveWalls(currentCell, nextCell);
 
+                if (currentCell.GeneratedAllNeighbours())
+                    CombineWallMeshes();
+                else
+                    unoptimisedWallsCell.Add(currentCell);
+
                 previousCell = currentCell;
                 currentCell = nextCell;
 
-                AdjustCellVisual(Color.red);
+                AdjustCellVisual();
                 yield return new WaitForSeconds(cellSpawnDelay);
             }
             else if (!coloredLastCell)
             {
-                AdjustCellVisual(Color.yellow);
+                currentCell.cellPrefab.name = "endCell";
+                endCell = currentCell;
+                currentCell.isEndCell = true;
                 coloredLastCell = true;
+                AdjustCellVisual();
             }
             else if (stack.Count > 0) // if there are still un(re)visited cells in the stack
             {
@@ -126,6 +164,11 @@ public class GenerateMaze : MonoBehaviour
             }
             else // if every cell has been visited
             {
+                ColorCell(endCell, Color.yellow);
+                endCell.cellPrefab.transform.GetChild(0).gameObject.SetActive(true);
+                endCell.cellPrefab.transform.position = new Vector3(endCell.cellPrefab.transform.position.x, endCell.cellPrefab.transform.position.y + 0.05f, endCell.cellPrefab.transform.position.z);
+
+                CombineMazeMeshes();
                 yield break;
             }
         }
@@ -148,37 +191,187 @@ public class GenerateMaze : MonoBehaviour
             }
         }
 
-        // Instantiate a visual element for the cellgrid and store it in the cell, set it inactive for now
         for (int i = 0; i < cells.Count; i++)
         {
-            cells[i].cellPrefab = objectPooler.SpawnFromPool("MazeCell", new Vector3(cells[i].x, transform.position.y, cells[i].z), transform.rotation, mazeCellPool.transform);
+            // Instantiate a visual element for the cellgrid and store it in the cell, set it inactive for now
+            cells[i].cellPrefab = Instantiate(cellPrefab, new Vector3(cells[i].x, transform.position.y, cells[i].z), transform.rotation, cellContainer.transform);
             cells[i].cellPrefab.SetActive(false);
+
+            cells[i].OnObjectSpawn();
         }
 
         startCellIndex = UnityEngine.Random.Range(0, cells.Count);
         currentCell = cells[startCellIndex];
+        currentCell.isStartCell = true;
     }
 
-    private void AdjustCellVisual(Color cellColor)
+    private void AddToWallMesh()
     {
-        for (int i = 0; i < cells.Count; i++)
+        for (int i = 0; i < unoptimisedWallsCell.Count; i++)
         {
-            if (cells[i] == currentCell)
+            for (int j = 0; j < 4; j++)
             {
-                currentCell.cellPrefab.SetActive(true);
+                if (unoptimisedWallsCell[i] != null)
+                {
+                    if (unoptimisedWallsCell[i].walls[j] == true)
+                        cellWallMeshFilters.Add(unoptimisedWallsCell[i].cellPrefab.transform.GetChild(1).GetChild(j).gameObject.GetComponent<MeshFilter>());
+                }
+            }
+            unoptimisedWallsCell.RemoveAt(i);
+            i--;
+        }
+    }
 
-                ColorCell(cellColor);
+    private void CombineWallMeshes()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (currentCell.walls[i] == true)
+                cellWallMeshFilters.Add(currentCell.cellPrefab.transform.GetChild(1).GetChild(i).gameObject.GetComponent<MeshFilter>());
+        }
+    }
 
-                StartCoroutine(LerpPosition(.2f, currentCell));
-                break;
+    private void CombineMazeMeshes()
+    {
+        cellGroundMeshFilters.Add(mazeGroundMesh);
+        AddToWallMesh();
+        cellWallMeshFilters.Add(mazeWallMesh);
+        CombineInstance[] combineGround = new CombineInstance[cellGroundMeshFilters.Count];
+        CombineInstance[] combineWalls = new CombineInstance[cellWallMeshFilters.Count];
+
+        int i = 0;
+        while (i < cellGroundMeshFilters.Count)
+        {
+            combineGround[i].mesh = cellGroundMeshFilters[i].sharedMesh;
+            combineGround[i].transform = cellGroundMeshFilters[i].transform.localToWorldMatrix;
+
+            cellGroundMeshFilters[i].gameObject.SetActive(false);
+
+            i++;
+        }
+        cellGroundMeshFilters.Clear();
+
+        int j = 0;
+        while (j < cellWallMeshFilters.Count)
+        {
+            combineWalls[j].mesh = cellWallMeshFilters[j].sharedMesh;
+            combineWalls[j].transform = cellWallMeshFilters[j].transform.localToWorldMatrix;
+            cellWallMeshFilters[j].gameObject.SetActive(false);
+
+            j++;
+        }
+        cellWallMeshFilters.Clear();
+
+        mazeGroundMesh.mesh = new Mesh();
+        mazeGroundMesh.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        mazeGroundMesh.mesh.CombineMeshes(combineGround);
+        mazeGroundMesh.gameObject.SetActive(true);
+        AutoWeld(mazeGroundMesh.mesh, 0f, 1f);
+
+        mazeWallMesh.mesh = new Mesh();
+        mazeWallMesh.mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        mazeWallMesh.mesh.CombineMeshes(combineWalls);
+        mazeWallMesh.gameObject.SetActive(true);
+        AutoWeld(mazeWallMesh.mesh, 0f, 1f);
+    }
+
+    public static void AutoWeld(Mesh mesh, float threshold, float bucketStep)
+    {
+        Vector3[] oldVertices = mesh.vertices;
+        Vector3[] newVertices = new Vector3[oldVertices.Length];
+        int[] old2new = new int[oldVertices.Length];
+        int newSize = 0;
+
+        // Find AABB
+        Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+        Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+        for (int i = 0; i < oldVertices.Length; i++)
+        {
+            if (oldVertices[i].x < min.x) min.x = oldVertices[i].x;
+            if (oldVertices[i].y < min.y) min.y = oldVertices[i].y;
+            if (oldVertices[i].z < min.z) min.z = oldVertices[i].z;
+            if (oldVertices[i].x > max.x) max.x = oldVertices[i].x;
+            if (oldVertices[i].y > max.y) max.y = oldVertices[i].y;
+            if (oldVertices[i].z > max.z) max.z = oldVertices[i].z;
+        }
+
+        // Make cubic buckets, each with dimensions "bucketStep"
+        int bucketSizeX = Mathf.FloorToInt((max.x - min.x) / bucketStep) + 1;
+        int bucketSizeY = Mathf.FloorToInt((max.y - min.y) / bucketStep) + 1;
+        int bucketSizeZ = Mathf.FloorToInt((max.z - min.z) / bucketStep) + 1;
+        List<int>[,,] buckets = new List<int>[bucketSizeX, bucketSizeY, bucketSizeZ];
+
+        // Make new vertices
+        for (int i = 0; i < oldVertices.Length; i++)
+        {
+            // Determine which bucket it belongs to
+            int x = Mathf.FloorToInt((oldVertices[i].x - min.x) / bucketStep);
+            int y = Mathf.FloorToInt((oldVertices[i].y - min.y) / bucketStep);
+            int z = Mathf.FloorToInt((oldVertices[i].z - min.z) / bucketStep);
+
+            // Check to see if it's already been added
+            if (buckets[x, y, z] == null)
+                buckets[x, y, z] = new List<int>(); // Make buckets lazily
+
+            for (int j = 0; j < buckets[x, y, z].Count; j++)
+            {
+                Vector3 to = newVertices[buckets[x, y, z][j]] - oldVertices[i];
+                if (Vector3.SqrMagnitude(to) < threshold)
+                {
+                    old2new[i] = buckets[x, y, z][j];
+                    goto skip; // Skip to next old vertex if this one is already there
+                }
+            }
+
+            // Add new vertex
+            newVertices[newSize] = oldVertices[i];
+            buckets[x, y, z].Add(newSize);
+            old2new[i] = newSize;
+            newSize++;
+
+        skip:;
+        }
+
+        // Make new triangles
+        int[] oldTris = mesh.triangles;
+        int[] newTris = new int[oldTris.Length];
+        for (int i = 0; i < oldTris.Length; i++)
+        {
+            newTris[i] = old2new[oldTris[i]];
+        }
+
+        Vector3[] finalVertices = new Vector3[newSize];
+        for (int i = 0; i < newSize; i++)
+            finalVertices[i] = newVertices[i];
+
+        mesh.Clear();
+        mesh.vertices = finalVertices;
+        mesh.triangles = newTris;
+        mesh.RecalculateNormals();
+        mesh.Optimize();
+    }
+
+    private void AdjustCellVisual()
+    {
+        if (!currentCell.adjustedCell)
+        {
+            currentCell.adjustedCell = true;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                if (cells[i] == currentCell)
+                {
+                    currentCell.cellPrefab.SetActive(true);
+                    StartCoroutine(LerpPosition(.2f, currentCell));
+                    break;
+                }
             }
         }
     }
 
-    private void ColorCell(Color cellColor)
+    private void ColorCell(Cell cell, Color cellColor)
     {
         // change the cell ground color
-        currentCell.cellPrefab.transform.GetChild(0).gameObject.GetComponent<MeshRenderer>().material.color = cellColor;
+        cell.cellPrefab.transform.GetChild(0).gameObject.GetComponent<MeshRenderer>().material.color = cellColor;
     }
 
     IEnumerator LerpPosition(float duration, Cell cell)
@@ -196,7 +389,7 @@ public class GenerateMaze : MonoBehaviour
         if (threeDimensionalMaze)
             targetHeight = previousCellHeight - cellHeightOffset;
         else
-            targetHeight = previousCellHeight;
+            targetHeight = -cellFallHeight;
 
         // change the cell height, the further down the maze the lower it will be
         Vector3 targetPosition = new Vector3(cellPostion.x, targetHeight, cellPostion.z);
@@ -206,7 +399,12 @@ public class GenerateMaze : MonoBehaviour
 
         // this coroutine only runs once when the cellSpawnDelay is a small value, the following line ensures that the cells will still get their correct height
         if (cellSpawnDelay < .2f && threeDimensionalMaze || !dropDownAnimation)
+        {
             cell.cellPrefab.transform.position = targetPosition;
+            if (!cell.isStartCell && !cell.isEndCell && cell != endCell)
+                cellGroundMeshFilters.Add(cell.cellPrefab.transform.GetChild(0).gameObject.GetComponent<MeshFilter>());
+
+        }
         else
         {
             while (time < duration)
@@ -217,6 +415,8 @@ public class GenerateMaze : MonoBehaviour
                 yield return null;
             }
             cell.cellPrefab.transform.position = targetPosition;
+            if (!cell.isStartCell && !cell.isEndCell && cell != endCell)
+                cellGroundMeshFilters.Add(cell.cellPrefab.transform.GetChild(0).gameObject.GetComponent<MeshFilter>());
         }
     }
 
